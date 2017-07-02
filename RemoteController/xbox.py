@@ -1,5 +1,7 @@
 """ Xbox 360 controller support for Python
-11/9/13 - Steven Jacobs
+Original file made on 11/9/13 by Steven Jacobs
+Adapted and fixed on 02/07/17 by Leandro Kieliger
+
 
 This class module supports reading a connected xbox controller.
 It requires that xboxdrv be installed first:
@@ -42,18 +44,17 @@ class Joystick:
     def __init__(self,refreshRate = 30):
         self.proc = subprocess.Popen(['sudo','xboxdrv','--detach-kernel-driver'], stdout=subprocess.PIPE)
         self.pipe = self.proc.stdout
-        
+
+        #TODO: Fix unused connect status
         self.connectStatus = False  #will be set to True once controller is detected and stays on
         self.reading = '0' * 140    #initialize stick readings to all zeros
 
-        # Read responses from 'xboxdrv' for upto 2 seconds, looking for controller/receiver to respond
         found = False
         while not found:
             readable, writeable, exception = select.select([self.pipe],[],[],0)
             if readable:
 
                 response = self.pipe.readline()
-
 
                 # Hard fail if we see this, so force an error
                 if 'error' in str(response).lower():
@@ -70,6 +71,7 @@ class Joystick:
                     found = True
                     self.connectStatus = True
                     self.reading = response
+                    
         # if the controller wasn't found, then halt
         if not found:
             self.close()
@@ -77,7 +79,21 @@ class Joystick:
 
     
     def refresh(self):
-        response = self.nonBlockRead()
+        """
+        The refresh function should be called in order to retrieve the output of the driver.
+        It performs a non-blocking read on the pipelined stdout of the driver process. Only
+        the most recent output line is considered.
+
+        This approaches fixes the issue where select() was used to test for valid output from
+        the driver. It failed to retrieve the latest values from the driver.
+
+        A simple readline in a loop does not work since it is a blocking call. See function below
+        to perform a non blocking read.
+        
+        https://stackoverflow.com/questions/8495794/python-popen-stdout-readline-hangs
+        
+        """
+        response = self._nonBlockRead()
 
         if response is not None:
             l = len(response)
@@ -89,7 +105,7 @@ class Joystick:
             self.reading = response
             print(str(response))
 
-    def nonBlockRead(self):
+    def _nonBlockRead(self):
         fd = self.pipe.fileno()
         fl = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)

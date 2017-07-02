@@ -1,6 +1,7 @@
 from xbox import Joystick
 
 import time
+import math
 
 DATA_FP_FORMAT = '{0:.2f}'
 
@@ -37,11 +38,17 @@ class RemoteController(object):
         self.refreshRate = refreshRate
 
     def acquireInput(self):
+        """
+        Refreshes and acquire the last available input from the driver
+
+        The current control is left stick form throttle and yaw control,
+        right stick for pitch and roll.
+        """
         self.inputDevice.refresh()
-        return (self.inputDevice.leftX(),
-                self.inputDevice.rightY(),
-                self.inputDevice.rightX(),
-                self.inputDevice.leftY())
+        return (self.inputFadingCurve(self.inputDevice.leftX()),
+                self.inputFadingCurve(self.inputDevice.rightY()),
+                self.inputFadingCurve(self.inputDevice.rightX()),
+                self.inputFadingCurve(self.inputDevice.leftY()))
 
     def run(self):
         while self.enabled:
@@ -55,17 +62,19 @@ class RemoteController(object):
 
         print('Halting remote controller')
                 
-        
-        
+
+# Ease functions
 def linearStep(x):
     return x
 
-def smoothStep(x):
-    return x * x * (3.0 - 2.0 * x)
+def smoothStep(x1):
+    x = abs(x1)
+    return math.copysign(x * x * (3.0 - 2.0 * x), x1)
 
 def main():
     controller = RemoteController(linearStep)
     controller.run()
+    controller.close()
         
     
 if __name__ == '__main__':
