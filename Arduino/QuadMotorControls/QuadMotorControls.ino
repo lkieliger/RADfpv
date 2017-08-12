@@ -100,55 +100,83 @@ void Run()
     {
     }
     char currentChar = Serial.read();
-    if (currentChar == 'h')
-    {
-      Serial.println("\nHigh\n");
-      currentGlobalSpeed = ESCSettings.High;
-    }
-    if (currentChar == 'j')
-    {
-      Serial.println("\nIncreasing motor speed by step");
-      if (currentGlobalSpeed + ESC_STEP < ESCSettings.High) {
-        currentGlobalSpeed = currentGlobalSpeed + ESC_STEP;
-        Serial.println("New speed = ");
-        Serial.print(currentGlobalSpeed);
-      }
 
-      else
-      {
-        Serial.println("\nMax speed reached\n");
-      }
-    }
-    if (currentChar == 'k')
-    {
-      Serial.println("\nDecreasing motor speed by step\n");
-      if (currentGlobalSpeed - ESC_STEP >= ESCSettings.Low)
-      {
-        currentGlobalSpeed = currentGlobalSpeed - ESC_STEP;
-        Serial.println("New speed = ");
-        Serial.print(currentGlobalSpeed);
-      }
-
-      else
-      {
-        Serial.println("\nMin speed reached\n");
-      }
-    }
-    if (currentChar == 'l')
-    {
-      Serial.println("\nStopping motors\n");
-      currentGlobalSpeed = ESCSettings.Low;
-    }
-    if (currentChar == 'u')
-    {
-      Serial.println("\nPlacing throttle at startup\n");
-      currentGlobalSpeed = ESCSettings.Startup;
+    switch (currentChar){
+      case 'h':
+          Serial.println("\nHigh\n");
+          currentGlobalSpeed = ESCSettings.High;
+        break;
+      case 'j':
+        Serial.println("\nIncreasing motor speed by step");
+        if (currentGlobalSpeed + ESC_STEP < ESCSettings.High) {
+          currentGlobalSpeed = currentGlobalSpeed + ESC_STEP;
+          Serial.println("New speed = ");
+          Serial.print(currentGlobalSpeed);
+        }
+  
+        else
+        {
+          Serial.println("\nMax speed reached\n");
+        }
+        break;
+      case 'k':
+        Serial.println("\nDecreasing motor speed by step\n");
+        if (currentGlobalSpeed - ESC_STEP >= ESCSettings.Low)
+        {
+          currentGlobalSpeed = currentGlobalSpeed - ESC_STEP;
+          Serial.println("New speed = ");
+          Serial.print(currentGlobalSpeed);
+        }
+  
+        else
+        {
+          Serial.println("\nMin speed reached\n");
+        }
+        break;
+      case 'l':
+        Serial.println("\nStopping motors\n");
+        currentGlobalSpeed = ESCSettings.Low;
+        break;
+      case 'u':
+        Serial.println("\nPlacing throttle at startup\n");
+        currentGlobalSpeed = ESCSettings.Startup;
+        break;
+      case 'i':
+        rotateYaw(0);
+        rotatePitch(0);
+        rotateRoll(0);
+        break;
+      case 'q':
+        rotateYaw(2);
+        break;
+      case 'w':
+        rotateYaw(-2);
+        break;
+      case 'a':
+        rotatePitch(2);
+        break;
+      case 's':
+        rotatePitch(-2);
+        break;
+      case 'y':
+        rotateRoll(2);
+        break;
+      case 'x':
+        rotateRoll(-2);
+        break;
+      default:
+        break;
     }
     applyMotorSpeed();
   }
 }
 
 void applyMotorSpeed(){
+  /**
+   * Yaw is the vertical axis
+   * Pitch is the lateral axis
+   * Roll is the longitudinal axis
+   */
 
   for (int i = 0; i < NUMMOTORS; i++)
   {
@@ -156,7 +184,8 @@ void applyMotorSpeed(){
   }
   
   if (quadControl.yaw != 0){
-    /* Unbalance angular momentum of the propellers, the body of the drone pivots in the opposite direction to 
+    /** 
+     * Unbalance angular momentum of the propellers, the body of the drone pivots in the opposite direction to 
      * keep the total angular momentum unchanged. Increase thrust on the other motors to keep the total forward force
      * unchanged.
      */
@@ -168,11 +197,19 @@ void applyMotorSpeed(){
   }
 
   if (quadControl.pitch != 0){
-    
+    motors[0].thrust += quadControl.pitch;
+    motors[1].thrust += quadControl.pitch;
+
+    motors[2].thrust -= quadControl.pitch;
+    motors[3].thrust -= quadControl.pitch;
   }
 
   if (quadControl.roll != 0){
-    
+    motors[0].thrust += quadControl.roll;
+    motors[3].thrust += quadControl.roll;
+
+    motors[1].thrust -= quadControl.roll;
+    motors[2].thrust -= quadControl.roll;
   }
   
   for (int i = 0; i < NUMMOTORS; i++)
