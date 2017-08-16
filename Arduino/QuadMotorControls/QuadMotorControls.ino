@@ -42,7 +42,7 @@ const int ESC_LOW_DEFAULT = 0;
 const int ESC_STARTUP_DEFAULT = 45;
 const int ESC_STEP = 1;
 
-const int DEFAULT_CONTROL_BOUND = 3;
+const int DEFAULT_CONTROL_BOUND = 10;
 const int MIN_YAW_CONTROL = -DEFAULT_CONTROL_BOUND;
 const int MAX_YAW_CONTROL = DEFAULT_CONTROL_BOUND;
 const int MIN_PITCH_CONTROL = -DEFAULT_CONTROL_BOUND;
@@ -142,27 +142,25 @@ void Run()
         currentGlobalSpeed = ESCSettings.Startup;
         break;
       case 'i':
-        rotateYaw(0);
-        rotatePitch(0);
-        rotateRoll(0);
+        resetControls();
         break;
       case 'q':
-        rotateYaw(2);
+        rotateYaw(1);
         break;
       case 'w':
-        rotateYaw(-2);
+        rotateYaw(-1);
         break;
       case 'a':
-        rotatePitch(2);
+        rotatePitch(1);
         break;
       case 's':
-        rotatePitch(-2);
+        rotatePitch(-1);
         break;
       case 'y':
-        rotateRoll(2);
+        rotateRoll(1);
         break;
       case 'x':
-        rotateRoll(-2);
+        rotateRoll(-1);
         break;
       default:
         break;
@@ -219,17 +217,22 @@ void applyMotorSpeed(){
 }
 
 void rotateYaw(int d){
-  quadControl.yaw = constrain(d, MIN_YAW_CONTROL, MAX_YAW_CONTROL);
+  quadControl.yaw = constrain(quadControl.yaw + d, MIN_YAW_CONTROL, MAX_YAW_CONTROL);
 }
 
 void rotatePitch(int d){
-  quadControl.pitch = constrain(d, MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
+  quadControl.pitch = constrain(quadControl.pitch + d, MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
 }
 
 void rotateRoll(int d){
-  quadControl.roll = constrain(d, MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
+  quadControl.roll = constrain(quadControl.roll + d, MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
 }
 
+void resetControls(){
+  quadControl.yaw = 0;
+  quadControl.pitch = 0;
+  quadControl.roll = 0;
+}
 void loop()
 {
   Run();
