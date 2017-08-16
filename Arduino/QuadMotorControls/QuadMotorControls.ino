@@ -1,4 +1,5 @@
 #include <Servo.h>
+#include "Motor.h"
 
 typedef struct QuadControlDef
 {
@@ -10,14 +11,7 @@ typedef struct QuadControlDef
 QuadControlDef quadControl;
 
 #define NUMMOTORS 4
-typedef struct MotorDef
-{
-    Servo   motor; 
-    int     pin;   // Indicates the pin this motor is connected to
-    int     thrust; 
-};
-
-MotorDef motors[NUMMOTORS];
+const Motor motors[NUMMOTORS] = {{5}, {6}, {10}, {11}};
 
 // Stores the settings for all ESC. This can be made specific to each ESC, but that's not needed
 // for a quadcopter project
@@ -56,18 +50,6 @@ void setup()
   // Required for I/O from Serial monitor
   Serial.begin(9600);
   Serial.println("Setup: Serial port communication at 9600bps");
-  
-  // Attach motors to pins
-  motors[0].pin =  5;
-  motors[1].pin =  6;
-  motors[2].pin =  10;
-  motors[3].pin =  11;
-
-  // Attach motors to their corresponding pins
-  for(int i = 0; i < NUMMOTORS; i++)
-  {
-    motors[i].motor.attach(motors[i].pin);
-  }
 
   // Set the ESC settings to the defaults
   ESCSettings.Low   = ESC_LOW_DEFAULT;
@@ -80,14 +62,13 @@ void setup()
   
 }
 
-
 // Increase the speed of the motor from low to high as set by the user
 void Run()
 {
   // Send a low signal initially for normal mode
   for (int i = 0; i < NUMMOTORS; i++)
   {
-    motors[i].motor.write(ESCSettings.Low);
+    motors[i].writeThrust();
   }
   Serial.println("Running ESC");
   Serial.println("Step = ");
@@ -178,7 +159,7 @@ void applyMotorSpeed(){
 
   for (int i = 0; i < NUMMOTORS; i++)
   {
-    motors[i].thrust = currentGlobalSpeed;
+    motors[i].setThrust(currentGlobalSpeed);
   }
   
   if (quadControl.yaw != 0){
@@ -187,32 +168,32 @@ void applyMotorSpeed(){
      * keep the total angular momentum unchanged. Increase thrust on the other motors to keep the total forward force
      * unchanged.
      */
-    motors[1].thrust -= quadControl.yaw;
-    motors[3].thrust -= quadControl.yaw;
+    motors[1].updateThrust( -quadControl.yaw);
+    motors[3].updateThrust( - quadControl.yaw);
 
-    motors[0].thrust += quadControl.yaw;
-    motors[2].thrust += quadControl.yaw;
+    motors[0].updateThrust( + quadControl.yaw);
+    motors[2].updateThrust( + quadControl.yaw);
   }
 
   if (quadControl.pitch != 0){
-    motors[0].thrust += quadControl.pitch;
-    motors[1].thrust += quadControl.pitch;
+    motors[0].updateThrust( + quadControl.pitch);
+    motors[1].updateThrust( + quadControl.pitch);
 
-    motors[2].thrust -= quadControl.pitch;
-    motors[3].thrust -= quadControl.pitch;
+    motors[2].updateThrust( - quadControl.pitch);
+    motors[3].updateThrust( - quadControl.pitch);
   }
 
   if (quadControl.roll != 0){
-    motors[0].thrust += quadControl.roll;
-    motors[3].thrust += quadControl.roll;
+    motors[0].updateThrust( + quadControl.roll);
+    motors[3].updateThrust( + quadControl.roll);
 
-    motors[1].thrust -= quadControl.roll;
-    motors[2].thrust -= quadControl.roll;
+    motors[1].updateThrust( - quadControl.roll);
+    motors[2].updateThrust( - quadControl.roll);
   }
   
   for (int i = 0; i < NUMMOTORS; i++)
   {
-    motors[i].motor.write(motors[i].thrust);
+    motors[i].writeThrust();
   }  
 }
 
