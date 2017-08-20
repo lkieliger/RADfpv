@@ -22,6 +22,7 @@ public:
   void updateThrust(int delta)
   {
     thrust += delta;
+    thrust = constrain(thrust, MIN_THRUST, MAX_THRUST);
   }
 
   void writeThrust()
@@ -42,8 +43,8 @@ private:
   Servo servoControl;
   int thrust;
   int pin;
-  const int MIN_THRUST = 0;
-  const int MAX_THRUST = 180;
+  const int MIN_THRUST = 5;
+  const int MAX_THRUST = 75;
 };
 
 #endif
