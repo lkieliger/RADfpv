@@ -68,7 +68,9 @@ void Run()
   // Send a low signal initially for normal mode
   for (int i = 0; i < NUMMOTORS; i++)
   {
+    motors[i].init();
     motors[i].writeThrust();
+    motors[i].printStatus();
   }
   Serial.println("Running ESC");
   Serial.println("Step = ");
@@ -168,7 +170,7 @@ void applyMotorSpeed(){
      * keep the total angular momentum unchanged. Increase thrust on the other motors to keep the total forward force
      * unchanged.
      */
-    motors[1].updateThrust( -quadControl.yaw);
+    motors[1].updateThrust( - quadControl.yaw);
     motors[3].updateThrust( - quadControl.yaw);
 
     motors[0].updateThrust( + quadControl.yaw);
@@ -194,6 +196,7 @@ void applyMotorSpeed(){
   for (int i = 0; i < NUMMOTORS; i++)
   {
     motors[i].writeThrust();
+    motors[i].printStatus();
   }  
 }
 
