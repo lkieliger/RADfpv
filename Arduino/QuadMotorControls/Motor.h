@@ -27,7 +27,7 @@ public:
 
   void writeThrust()
   {
-    servoControl.write(thrust);
+    servoControl.writeMicroseconds(thrust);
   }
 
   void printStatus()
@@ -43,8 +43,8 @@ private:
   Servo servoControl;
   int thrust;
   int pin;
-  const int MIN_THRUST = 5;
-  const int MAX_THRUST = 75;
+  const int MIN_THRUST = 0;
+  const int MAX_THRUST = 1500;
 };
 
 #endif

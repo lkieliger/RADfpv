@@ -31,10 +31,10 @@ uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
 // Variables for the PID algorithm
-constexpr float PIDConstantStep = 0.1;
+constexpr float PIDConstantStep = 0.01;
 double pitchSetpoint, pitchInput, pitchControlOutput;
 double rollSetpoint, rollInput, rollControlOutput;
-double Kp=1.0, Ki=0.0, Kd=0.0;
+double Kp=0.4, Ki=0.0, Kd=0.00;
 PID pitchPID(&pitchInput, &pitchControlOutput, &pitchSetpoint, Kp, Ki, Kd, DIRECT);
 PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, DIRECT);
 
@@ -87,12 +87,12 @@ int yawControl;
 int pitchControl;
 int rollControl;
 
-const int ESC_HIGH_DEFAULT = 179;
+const int ESC_HIGH_DEFAULT = 2000;
 const int ESC_LOW_DEFAULT = 0;
-const int ESC_STARTUP_DEFAULT = 45;
-const int ESC_STEP = 1;
+const int ESC_STARTUP_DEFAULT = 1000;
+const int ESC_STEP = 10;
 
-const int DEFAULT_CONTROL_BOUND = 10;
+const int DEFAULT_CONTROL_BOUND = 50;
 const int MIN_YAW_CONTROL = -DEFAULT_CONTROL_BOUND;
 const int MAX_YAW_CONTROL = DEFAULT_CONTROL_BOUND;
 const int MIN_PITCH_CONTROL = -DEFAULT_CONTROL_BOUND;
@@ -197,9 +197,9 @@ void setup()
   currentGlobalSpeed = ESCSettings.Low;
 
   //pitchPID.SetSampleTime(50);
-  pitchPID.SetOutputLimits(-90, 90);
+  pitchPID.SetOutputLimits(MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
   //rollPID.SetSampleTime(50);
-  rollPID.SetOutputLimits(-90, 90);
+  rollPID.SetOutputLimits(MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
 }
 
 // Increase the speed of the motor from low to high as set by the user
@@ -393,8 +393,8 @@ void resetControls(){
 
 void stabilize(){
   // Inverse pitch and roll due to sensor mounting direction on quadcopter
-  float roll = ypr[1] * 180/M_PI;
-  float pitch = ypr[2] * 180/M_PI;
+  float pitch = ypr[1] * 180/M_PI;
+  float roll = ypr[2] * 180/M_PI;
 
   float deltaPitch = desiredYpr[1] - pitch;
   float deltaRoll = desiredYpr[2] - roll;
@@ -402,30 +402,34 @@ void stabilize(){
   rollInput = roll;
   pitchInput = pitch;
 
-  //rotateRoll(correctionFromDelta(deltaRoll));
-  //rotatePitch(-correctionFromDelta(deltaPitch));
-
   pitchPID.Compute();
   rollPID.Compute();
+
+  rotateRoll(-rollControlOutput);
+  rotatePitch(pitchControlOutput);
   
   Serial.print("Pitch: ");
   Serial.print(pitch);
   Serial.print(" Roll: ");
   Serial.print(roll);
-  Serial.print(" Y. control: ");
+  Serial.print(" YC: ");
   Serial.print(quadControl.yaw);
-  Serial.print(" P. control: ");
+  Serial.print(" PC: ");
   Serial.print(quadControl.pitch);
-  Serial.print(" R. control: ");
+  Serial.print(" RC: ");
   Serial.print(quadControl.roll);
-  Serial.print(" Y. PID: ");
+  Serial.print(" YPID: ");
   Serial.print("_");
-  Serial.print(" P. PID: ");
+  Serial.print(" PPID: ");
   Serial.print(pitchControlOutput);
-  Serial.print(" to ");
-  Serial.print(pitchSetpoint);
-  Serial.print(" R. PID: ");
-  Serial.println(rollControlOutput);
+  Serial.print(" R.PID: ");
+  Serial.print(rollControlOutput);
+  Serial.print(" Kp: ");
+  Serial.print(Kp);
+  Serial.print(" Ki: ");
+  Serial.print(Ki);
+  Serial.print(" Kd: ");
+  Serial.println(Kd);
 }
 float b1 = 0.8;
 float b2 = 1.0;
