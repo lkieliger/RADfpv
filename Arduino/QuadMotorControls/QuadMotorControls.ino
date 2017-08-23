@@ -34,7 +34,7 @@ uint8_t fifoBuffer[64]; // FIFO storage buffer
 constexpr float PIDConstantStep = 0.1;
 double pitchSetpoint, pitchInput, pitchControlOutput;
 double rollSetpoint, rollInput, rollControlOutput;
-double Kp=2, Ki=5, Kd=1;
+double Kp=1.0, Ki=0.0, Kd=0.0;
 PID pitchPID(&pitchInput, &pitchControlOutput, &pitchSetpoint, Kp, Ki, Kd, DIRECT);
 PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, DIRECT);
 
@@ -114,7 +114,7 @@ void setup()
     // initialize serial communication
     // (115200 chosen because it is required for Teapot Demo output, but it's
     // really up to you depending on your project)
-    Serial.begin(115200);
+    Serial.begin(230400);
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
@@ -196,12 +196,10 @@ void setup()
 
   currentGlobalSpeed = ESCSettings.Low;
 
-  pitchPID.SetMode(MANUAL);
-  pitchPID.SetSampleTime(50);
-  pitchPID.SetOutputLimits(0, 179);
-  rollPID.SetMode(MANUAL);
-  rollPID.SetSampleTime(50);
-  rollPID.SetOutputLimits(0, 179);
+  //pitchPID.SetSampleTime(50);
+  pitchPID.SetOutputLimits(-90, 90);
+  //rollPID.SetSampleTime(50);
+  rollPID.SetOutputLimits(-90, 90);
 }
 
 // Increase the speed of the motor from low to high as set by the user
@@ -401,6 +399,9 @@ void stabilize(){
   float deltaPitch = desiredYpr[1] - pitch;
   float deltaRoll = desiredYpr[2] - roll;
 
+  rollInput = roll;
+  pitchInput = pitch;
+
   //rotateRoll(correctionFromDelta(deltaRoll));
   //rotatePitch(-correctionFromDelta(deltaPitch));
 
@@ -421,6 +422,8 @@ void stabilize(){
   Serial.print("_");
   Serial.print(" P. PID: ");
   Serial.print(pitchControlOutput);
+  Serial.print(" to ");
+  Serial.print(pitchSetpoint);
   Serial.print(" R. PID: ");
   Serial.println(rollControlOutput);
 }
