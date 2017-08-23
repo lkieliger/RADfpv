@@ -1,4 +1,5 @@
 #include <Servo.h>
+#include <PID_v1.h>
 #include "Motor.h"
 #include "I2Cdev.h"
 
@@ -29,6 +30,14 @@ uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
+// Variables for the PID algorithm
+constexpr float PIDConstantStep = 0.1;
+double pitchSetpoint, pitchInput, pitchControlOutput;
+double rollSetpoint, rollInput, rollControlOutput;
+double Kp=2, Ki=5, Kd=1;
+PID pitchPID(&pitchInput, &pitchControlOutput, &pitchSetpoint, Kp, Ki, Kd, DIRECT);
+PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, DIRECT);
+
 // orientation/motion vars
 Quaternion q;           // [w, x, y, z]         quaternion container
 VectorInt16 aa;         // [x, y, z]            accel sensor measurements
@@ -37,6 +46,7 @@ VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measure
 VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+float desiredYpr[3]{0,0,0};
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -56,7 +66,7 @@ typedef struct QuadControlDef
 
 QuadControlDef quadControl;
 
-#define NUMMOTORS 4
+constexpr int NUMMOTORS = 4;
 const Motor motors[NUMMOTORS] = {{5}, {6}, {10}, {11}};
 
 // Stores the settings for all ESC. This can be made specific to each ESC, but that's not needed
@@ -77,7 +87,7 @@ int yawControl;
 int pitchControl;
 int rollControl;
 
-const int ESC_HIGH_DEFAULT = 180;
+const int ESC_HIGH_DEFAULT = 179;
 const int ESC_LOW_DEFAULT = 0;
 const int ESC_STARTUP_DEFAULT = 45;
 const int ESC_STEP = 1;
@@ -185,15 +195,24 @@ void setup()
   }
 
   currentGlobalSpeed = ESCSettings.Low;
+
+  pitchPID.SetMode(MANUAL);
+  pitchPID.SetSampleTime(50);
+  pitchPID.SetOutputLimits(0, 179);
+  rollPID.SetMode(MANUAL);
+  rollPID.SetSampleTime(50);
+  rollPID.SetOutputLimits(0, 179);
 }
 
 // Increase the speed of the motor from low to high as set by the user
 void Run()
 {
   char currentChar = Serial.read();
-  Serial.println(currentChar);
-
+  
   switch (currentChar){
+    //------------------------------
+    //  Thrust control
+    //------------------------------
     case 'h':
         //Serial.println("\nHigh\n");
         currentGlobalSpeed = ESCSettings.High;
@@ -236,6 +255,19 @@ void Run()
     case 'i':
       resetControls();
       break;
+      
+    //------------------------------
+    //  Calibration
+    //------------------------------
+    
+    case 't':
+      calibrateGyro();
+      break;
+      
+    //------------------------------
+    //  Yaw pitch and roll control
+    //------------------------------
+    
     case 'q':
       rotateYaw(1);
       break;
@@ -254,11 +286,46 @@ void Run()
     case 'x':
       rotateRoll(-1);
       break;
+
+    //------------------------------
+    //  PID constant control
+    //------------------------------
+
+    case 'e':
+      Kp += PIDConstantStep;
+      updatePIDTunings();
+      break;
+    case 'r':
+      Kp -= PIDConstantStep;
+      updatePIDTunings();
+      break;
+    case 'd':
+      Ki += PIDConstantStep;
+      updatePIDTunings();
+      break;
+    case 'f':
+      Ki -= PIDConstantStep;
+      updatePIDTunings();
+      break;
+    case 'c':
+      Kd += PIDConstantStep;
+      updatePIDTunings();
+      break;
+    case 'v':
+      Kd -= PIDConstantStep;
+      updatePIDTunings();
+      break;
+      
     default:
       break;
   }
   stabilize();
   applyMotorSpeed();
+}
+
+void updatePIDTunings(){
+  pitchPID.SetTunings(Kp, Ki, Kd);
+  rollPID.SetTunings(Kp, Ki, Kd);
 }
 
 void applyMotorSpeed(){
@@ -331,20 +398,76 @@ void stabilize(){
   float roll = ypr[1] * 180/M_PI;
   float pitch = ypr[2] * 180/M_PI;
 
-    rotateRoll((int)(-roll / 15.0));
-  
-    rotatePitch((int)(pitch / 15.0));
+  float deltaPitch = desiredYpr[1] - pitch;
+  float deltaRoll = desiredYpr[2] - roll;
+
+  //rotateRoll(correctionFromDelta(deltaRoll));
+  //rotatePitch(-correctionFromDelta(deltaPitch));
+
+  pitchPID.Compute();
+  rollPID.Compute();
   
   Serial.print("Pitch: ");
   Serial.print(pitch);
   Serial.print(" Roll: ");
   Serial.print(roll);
-  Serial.print(" Yaw control: ");
+  Serial.print(" Y. control: ");
   Serial.print(quadControl.yaw);
-  Serial.print(" Pitch control: ");
+  Serial.print(" P. control: ");
   Serial.print(quadControl.pitch);
-  Serial.print(" Roll control: ");
-  Serial.println(quadControl.roll);
+  Serial.print(" R. control: ");
+  Serial.print(quadControl.roll);
+  Serial.print(" Y. PID: ");
+  Serial.print("_");
+  Serial.print(" P. PID: ");
+  Serial.print(pitchControlOutput);
+  Serial.print(" R. PID: ");
+  Serial.println(rollControlOutput);
+}
+float b1 = 0.8;
+float b2 = 1.0;
+float b3 = 2.0;
+float b4 = 3.0;
+
+int correctionFromDelta(float delta)
+{
+  float v = abs(delta);
+  if(v <= b1){
+    return 0;
+  } else if(v > b1 && v <= b2){
+    return 1 * signum(delta);
+  } else if(v > b2 && v <= b3){
+    return 1 * signum(delta);
+  } else if(v > b3 && v <= b4){
+    return 1 * signum(delta);
+  } else {
+    return 2 * signum(delta);
+  }
+}
+
+int signum(float x){
+  if(x >= 0){
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
+void calibrateGyro(){
+  float roll = ypr[1] * 180/M_PI;
+  float pitch = ypr[2] * 180/M_PI;
+
+  //desiredYpr[0] = 0.0;
+  //desiredYpr[1] = pitch;
+  //desiredYpr[2] = roll;
+  
+  pitchSetpoint = pitch;
+  rollSetpoint = roll;
+
+  if(pitchPID.GetMode() == MANUAL || rollPID.GetMode() == MANUAL){
+    pitchPID.SetMode(AUTOMATIC);
+    rollPID.SetMode(AUTOMATIC);
+  }
 }
 void loop()
 {
