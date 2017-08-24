@@ -44,7 +44,7 @@ private:
   int thrust;
   int pin;
   const int MIN_THRUST = 0;
-  const int MAX_THRUST = 1500;
+  const int MAX_THRUST = 1400;
 };
 
 #endif
