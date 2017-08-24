@@ -34,9 +34,9 @@ uint8_t fifoBuffer[64]; // FIFO storage buffer
 constexpr float PIDConstantStep = 0.01;
 double pitchSetpoint, pitchInput, pitchControlOutput;
 double rollSetpoint, rollInput, rollControlOutput;
-double Kp=0.4, Ki=0.0, Kd=0.00;
+double Kp=0.50, Ki=0.10, Kd=0.04;
 PID pitchPID(&pitchInput, &pitchControlOutput, &pitchSetpoint, Kp, Ki, Kd, DIRECT);
-PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, DIRECT);
+PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, REVERSE);
 
 // orientation/motion vars
 Quaternion q;           // [w, x, y, z]         quaternion container
@@ -87,7 +87,7 @@ int yawControl;
 int pitchControl;
 int rollControl;
 
-const int ESC_HIGH_DEFAULT = 2000;
+const int ESC_HIGH_DEFAULT = 1600;
 const int ESC_LOW_DEFAULT = 0;
 const int ESC_STARTUP_DEFAULT = 1000;
 const int ESC_STEP = 10;
@@ -402,10 +402,10 @@ void stabilize(){
   rollInput = roll;
   pitchInput = pitch;
 
-  pitchPID.Compute();
+  //pitchPID.Compute();
   rollPID.Compute();
 
-  rotateRoll(-rollControlOutput);
+  rotateRoll(rollControlOutput);
   rotatePitch(pitchControlOutput);
   
   Serial.print("Pitch: ");
@@ -431,38 +431,10 @@ void stabilize(){
   Serial.print(" Kd: ");
   Serial.println(Kd);
 }
-float b1 = 0.8;
-float b2 = 1.0;
-float b3 = 2.0;
-float b4 = 3.0;
-
-int correctionFromDelta(float delta)
-{
-  float v = abs(delta);
-  if(v <= b1){
-    return 0;
-  } else if(v > b1 && v <= b2){
-    return 1 * signum(delta);
-  } else if(v > b2 && v <= b3){
-    return 1 * signum(delta);
-  } else if(v > b3 && v <= b4){
-    return 1 * signum(delta);
-  } else {
-    return 2 * signum(delta);
-  }
-}
-
-int signum(float x){
-  if(x >= 0){
-    return 1;
-  } else {
-    return -1;
-  }
-}
 
 void calibrateGyro(){
-  float roll = ypr[1] * 180/M_PI;
-  float pitch = ypr[2] * 180/M_PI;
+  float pitch = ypr[1] * 180/M_PI;
+  float roll = ypr[2] * 180/M_PI;
 
   //desiredYpr[0] = 0.0;
   //desiredYpr[1] = pitch;
