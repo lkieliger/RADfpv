@@ -34,7 +34,7 @@ uint8_t fifoBuffer[64]; // FIFO storage buffer
 constexpr float PIDConstantStep = 0.01;
 double pitchSetpoint, pitchInput, pitchControlOutput;
 double rollSetpoint, rollInput, rollControlOutput;
-double Kp=0.50, Ki=0.10, Kd=0.04;
+double Kp=0.430, Ki=0.020, Kd=0.030;
 PID pitchPID(&pitchInput, &pitchControlOutput, &pitchSetpoint, Kp, Ki, Kd, DIRECT);
 PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, REVERSE);
 
