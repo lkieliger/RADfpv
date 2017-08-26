@@ -196,9 +196,9 @@ void setup()
 
   currentGlobalSpeed = ESCSettings.Low;
 
-  //pitchPID.SetSampleTime(50);
+  pitchPID.SetSampleTime(1);
   pitchPID.SetOutputLimits(MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
-  //rollPID.SetSampleTime(50);
+  rollPID.SetSampleTime(1);
   rollPID.SetOutputLimits(MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
 }
 
@@ -213,7 +213,6 @@ void Run()
     //------------------------------
     case 'h':
         //Serial.println("\nHigh\n");
-        currentGlobalSpeed = ESCSettings.High;
       break;
     case 'j':
       //Serial.println("\nIncreasing motor speed by step");
@@ -409,9 +408,9 @@ void stabilize(){
   rotatePitch(pitchControlOutput);
   
   Serial.print("Pitch: ");
-  Serial.print(pitch);
+  Serial.print(pitch, 4);
   Serial.print(" Roll: ");
-  Serial.print(roll);
+  Serial.print(roll, 4);
   Serial.print(" YC: ");
   Serial.print(quadControl.yaw);
   Serial.print(" PC: ");
@@ -421,15 +420,15 @@ void stabilize(){
   Serial.print(" YPID: ");
   Serial.print("_");
   Serial.print(" PPID: ");
-  Serial.print(pitchControlOutput);
+  Serial.print(pitchControlOutput, 4);
   Serial.print(" R.PID: ");
-  Serial.print(rollControlOutput);
+  Serial.print(rollControlOutput, 4);
   Serial.print(" Kp: ");
-  Serial.print(Kp);
+  Serial.print(Kp, 3);
   Serial.print(" Ki: ");
-  Serial.print(Ki);
+  Serial.print(Ki, 3);
   Serial.print(" Kd: ");
-  Serial.println(Kd);
+  Serial.println(Kd, 3);
 }
 
 void calibrateGyro(){
