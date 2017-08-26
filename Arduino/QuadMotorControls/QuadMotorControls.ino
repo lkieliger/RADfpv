@@ -1,8 +1,12 @@
+#define PLOT_OUTPUT
+//#define VERBOSE_OUTPUT
+
+
 #include <Servo.h>
 #include <PID_v1.h>
 #include "Motor.h"
 #include "I2Cdev.h"
-
+#include "MovingAverage.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 //#include "MPU6050.h" // not necessary if using MotionApps include file
 
@@ -100,6 +104,9 @@ const int MAX_PITCH_CONTROL = DEFAULT_CONTROL_BOUND;
 const int MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
 const int MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
 
+MovingAverage movingAveragePitch{5};
+MovingAverage movingAverageRoll{5};
+
 void setup()
 {
   
@@ -131,12 +138,6 @@ void setup()
     // verify connection
     Serial.println(F("Testing device connections..."));
     Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
-
-    // wait for ready
-    Serial.println(F("\nSend any character to begin DMP programming and demo: "));
-    while (Serial.available() && Serial.read()); // empty buffer
-    while (!Serial.available());                 // wait for data
-    while (Serial.available() && Serial.read()); // empty buffer again
 
     // load and configure the DMP
     Serial.println(F("Initializing DMP..."));
@@ -398,6 +399,9 @@ void stabilize(){
   float deltaPitch = desiredYpr[1] - pitch;
   float deltaRoll = desiredYpr[2] - roll;
 
+  movingAveragePitch.append(pitch);
+  movingAverageRoll.append(roll);
+
   rollInput = roll;
   pitchInput = pitch;
 
@@ -406,29 +410,45 @@ void stabilize(){
 
   rotateRoll(rollControlOutput);
   rotatePitch(pitchControlOutput);
-  
-  Serial.print("Pitch: ");
-  Serial.print(pitch, 4);
-  Serial.print(" Roll: ");
-  Serial.print(roll, 4);
-  Serial.print(" YC: ");
-  Serial.print(quadControl.yaw);
-  Serial.print(" PC: ");
-  Serial.print(quadControl.pitch);
-  Serial.print(" RC: ");
-  Serial.print(quadControl.roll);
-  Serial.print(" YPID: ");
-  Serial.print("_");
-  Serial.print(" PPID: ");
-  Serial.print(pitchControlOutput, 4);
-  Serial.print(" R.PID: ");
-  Serial.print(rollControlOutput, 4);
-  Serial.print(" Kp: ");
-  Serial.print(Kp, 3);
-  Serial.print(" Ki: ");
-  Serial.print(Ki, 3);
-  Serial.print(" Kd: ");
-  Serial.println(Kd, 3);
+
+  #ifdef VERBOSE_OUTPUT
+    Serial.print("Pitch: ");
+    Serial.print(pitch, 4);
+    Serial.print(" Roll: ");
+    Serial.print(roll, 4);
+    Serial.print(" YC: ");
+    Serial.print(quadControl.yaw);
+    Serial.print(" PC: ");
+    Serial.print(quadControl.pitch);
+    Serial.print(" RC: ");
+    Serial.print(quadControl.roll);
+    Serial.print(" YPID: ");
+    Serial.print("_");
+    Serial.print(" PPID: ");
+    Serial.print(pitchControlOutput, 4);
+    Serial.print(" R.PID: ");
+    Serial.print(rollControlOutput, 4);
+    Serial.print(" Kp: ");
+    Serial.print(Kp, 3);
+    Serial.print(" Ki: ");
+    Serial.print(Ki, 3);
+    Serial.print(" Kd: ");
+    Serial.println(Kd, 3);
+  #endif
+
+  #ifdef PLOT_OUTPUT
+    Serial.print(pitch, 4);
+    Serial.print(" ");
+    Serial.print(quadControl.pitch, 4);
+    Serial.print(" ");
+    Serial.print(movingAveragePitch.value(), 4);
+    Serial.print(" ");
+    Serial.print(roll, 4);
+    Serial.print(" ");
+    Serial.print(quadControl.roll, 4);
+    Serial.print(" ");
+    Serial.println(movingAverageRoll.value(), 4);
+  #endif
 }
 
 void calibrateGyro(){
