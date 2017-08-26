@@ -144,10 +144,13 @@ void setup()
     devStatus = mpu.dmpInitialize();
 
     // supply your own gyro offsets here, scaled for min sensitivity
-    mpu.setXGyroOffset(220);
-    mpu.setYGyroOffset(76);
-    mpu.setZGyroOffset(-85);
-    mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+    mpu.setXGyroOffset(-107);
+    mpu.setYGyroOffset(-4);
+    mpu.setZGyroOffset(4);
+    mpu.setXAccelOffset(-3011);
+    mpu.setYAccelOffset(-2583);
+    mpu.setZAccelOffset(1061); // 1688 factory default for my test chip
+    mpu.setRate(1);
 
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {
@@ -201,6 +204,11 @@ void setup()
   pitchPID.SetOutputLimits(MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
   rollPID.SetSampleTime(1);
   rollPID.SetOutputLimits(MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
+
+  #ifdef PLOT_OUTPUT
+    pitchPID.SetMode(AUTOMATIC);
+    rollPID.SetMode(AUTOMATIC);
+  #endif
 }
 
 // Increase the speed of the motor from low to high as set by the user
@@ -439,13 +447,13 @@ void stabilize(){
   #ifdef PLOT_OUTPUT
     Serial.print(pitch, 4);
     Serial.print(" ");
-    Serial.print(quadControl.pitch, 4);
+    Serial.print(pitchControlOutput, 4);
     Serial.print(" ");
     Serial.print(movingAveragePitch.value(), 4);
     Serial.print(" ");
     Serial.print(roll, 4);
     Serial.print(" ");
-    Serial.print(quadControl.roll, 4);
+    Serial.print(rollControlOutput, 4);
     Serial.print(" ");
     Serial.println(movingAverageRoll.value(), 4);
   #endif
