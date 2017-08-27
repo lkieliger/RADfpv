@@ -1,18 +1,21 @@
+//#define PLOT_OUTPUT
+#define VERBOSE_OUTPUT
+int verboseOutputCount = 0;
+
 #include <Servo.h>
 #include <PID_v1.h>
 #include "Motor.h"
 #include "Gyroscope.h"
-//#include "PIDController.h"
+#include "MovingAverage.h"
+#include "LeakyIntegrator.h"
+#include "PIDController.h"
 
 Gyroscope gyro;
+MovingAverage movingAveragePitch{5};
+MovingAverage movingAverageRoll{4};
+LeakyIntegrator leakyIntegratorRoll{0.75};
 
-// Variables for the PID algorithm
-constexpr float PIDConstantStep = 0.01;
-double pitchSetpoint, pitchInput, pitchControlOutput;
-double rollSetpoint, rollInput, rollControlOutput;
-double Kp=0.50, Ki=0.15, Kd=0.05;
-PID pitchPID(&pitchInput, &pitchControlOutput, &pitchSetpoint, Kp, Ki, Kd, DIRECT);
-PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, REVERSE);
+PIDController pid;
 
 typedef struct QuadControlDef
 {
@@ -37,8 +40,6 @@ typedef struct ESCSettingsDef
 
 ESCSettingsDef ESCSettings; 
 
-#define NORMAL_MODE
-
 int currentGlobalSpeed;
 int yawControl;
 int pitchControl;
@@ -57,9 +58,13 @@ const int MAX_PITCH_CONTROL = DEFAULT_CONTROL_BOUND;
 const int MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
 const int MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
 
+const float PIDConstantStep = 0.01;
+AxisSelector sel = PITCH_SELECTOR;
+
 void setup()
 {
   gyro.init();
+  pid.init();
   
   // Set the ESC settings to the defaults
   ESCSettings.Low   = ESC_LOW_DEFAULT;
@@ -79,10 +84,6 @@ void setup()
 
   currentGlobalSpeed = ESCSettings.Low;
 
-  //pitchPID.SetSampleTime(50);
-  pitchPID.SetOutputLimits(MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
-  //rollPID.SetSampleTime(50);
-  rollPID.SetOutputLimits(MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
 }
 
 // Increase the speed of the motor from low to high as set by the user
@@ -94,10 +95,6 @@ void Run()
     //------------------------------
     //  Thrust control
     //------------------------------
-    case 'h':
-        //Serial.println("\nHigh\n");
-        currentGlobalSpeed = ESCSettings.High;
-      break;
     case 'j':
       //Serial.println("\nIncreasing motor speed by step");
       if (currentGlobalSpeed + ESC_STEP < ESCSettings.High) {
@@ -143,37 +140,6 @@ void Run()
     
     case 't':
       gyro.calibrateGyro();
-
-      pitchSetpoint = gyro.getPitch();
-      rollSetpoint = gyro.getRoll();
-    
-      if(pitchPID.GetMode() == MANUAL || rollPID.GetMode() == MANUAL){
-        pitchPID.SetMode(AUTOMATIC);
-        rollPID.SetMode(AUTOMATIC);
-      }
-      break;
-      
-    //------------------------------
-    //  Yaw pitch and roll control
-    //------------------------------
-    
-    case 'q':
-      rotateYaw(1);
-      break;
-    case 'w':
-      rotateYaw(-1);
-      break;
-    case 'a':
-      rotatePitch(1);
-      break;
-    case 's':
-      rotatePitch(-1);
-      break;
-    case 'y':
-      rotateRoll(1);
-      break;
-    case 'x':
-      rotateRoll(-1);
       break;
 
     //------------------------------
@@ -181,28 +147,22 @@ void Run()
     //------------------------------
 
     case 'e':
-      Kp += PIDConstantStep;
-      updatePIDTunings();
+      pid.updateKp(PIDConstantStep);
       break;
     case 'r':
-      Kp -= PIDConstantStep;
-      updatePIDTunings();
+      pid.updateKp(-PIDConstantStep);
       break;
     case 'd':
-      Ki += PIDConstantStep;
-      updatePIDTunings();
+      pid.updateKi(PIDConstantStep);
       break;
     case 'f':
-      Ki -= PIDConstantStep;
-      updatePIDTunings();
+      pid.updateKi(-PIDConstantStep);
       break;
     case 'c':
-      Kd += PIDConstantStep;
-      updatePIDTunings();
+      pid.updateKd(PIDConstantStep);
       break;
     case 'v':
-      Kd -= PIDConstantStep;
-      updatePIDTunings();
+      pid.updateKd(-PIDConstantStep);
       break;
       
     default:
@@ -210,11 +170,6 @@ void Run()
   }
   stabilize();
   applyMotorSpeed();
-}
-
-void updatePIDTunings(){
-  pitchPID.SetTunings(Kp, Ki, Kd);
-  rollPID.SetTunings(Kp, Ki, Kd);
 }
 
 void applyMotorSpeed(){
@@ -284,37 +239,58 @@ void resetControls(){
 
 void stabilize(){
 
-  rollInput = gyro.getRoll();
-  pitchInput = gyro.getPitch();
+  float roll = gyro.getRoll();
+  float pitch = gyro.getPitch();
 
-  //pitchPID.Compute();
-  rollPID.Compute();
+  movingAveragePitch.append(pitch);
+  leakyIntegratorRoll.append(roll);
+  movingAverageRoll.append(roll);
 
-  rotateRoll(rollControlOutput);
-  rotatePitch(pitchControlOutput);
-  
-  Serial.print("Pitch: ");
-  Serial.print(gyro.getPitch());
-  Serial.print(" Roll: ");
-  Serial.print(gyro.getRoll());
-  Serial.print(" YC: ");
-  Serial.print(quadControl.yaw);
-  Serial.print(" PC: ");
-  Serial.print(quadControl.pitch);
-  Serial.print(" RC: ");
-  Serial.print(quadControl.roll);
-  Serial.print(" YPID: ");
-  Serial.print("_");
-  Serial.print(" PPID: ");
-  Serial.print(pitchControlOutput);
-  Serial.print(" R.PID: ");
-  Serial.print(rollControlOutput);
-  Serial.print(" Kp: ");
-  Serial.print(Kp);
-  Serial.print(" Ki: ");
-  Serial.print(Ki);
-  Serial.print(" Kd: ");
-  Serial.println(Kd);
+  pid.updateInputs(pitch, leakyIntegratorRoll.value());
+  pid.compute();
+
+  rotatePitch(pid.getPitchOutput());
+  rotateRoll(pid.getRollOutput());
+
+  #ifdef VERBOSE_OUTPUT
+  if(verboseOutputCount > 1000){
+    verboseOutputCount = 0 ;
+    Serial.print("Pitch: ");
+    Serial.print(pitch, 4);
+    Serial.print(" Roll: ");
+    Serial.print(roll, 4);
+    Serial.print(" YC: ");
+    Serial.print(quadControl.yaw);
+    Serial.print(" PC: ");
+    Serial.print(quadControl.pitch);
+    Serial.print(" RC: ");
+    Serial.print(quadControl.roll);
+    Serial.print(" YPID: ");
+    Serial.print("_");
+    Serial.print(" PPID: ");
+    Serial.print(pid.getPitchOutput(), 4);
+    Serial.print(" R.PID: ");
+    Serial.print(pid.getRollOutput(), 4);
+    Serial.print(" Kp: ");
+    Serial.print(pid.getKp(), 3);
+    Serial.print(" Ki: ");
+    Serial.print(pid.getKi(), 3);
+    Serial.print(" Kd: ");
+    Serial.println(pid.getKd(), 3);
+  } else {
+    verboseOutputCount += +1;
+  }
+  #endif
+
+  #ifdef PLOT_OUTPUT
+    Serial.print(roll, 4);
+    Serial.print(" ");
+    Serial.print(pid.getRollOutput());
+    Serial.print(" ");
+    Serial.print(movingAverageRoll.value(), 4);
+    Serial.print(" ");
+    Serial.println(leakyIntegratorRoll.value(), 4);
+  #endif
 }
 
 void loop()
