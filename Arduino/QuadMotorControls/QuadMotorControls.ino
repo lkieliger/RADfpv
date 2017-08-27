@@ -1,5 +1,5 @@
-#define PLOT_OUTPUT
-//#define VERBOSE_OUTPUT
+//#define PLOT_OUTPUT
+#define VERBOSE_OUTPUT
 
 
 #include <Servo.h>
@@ -26,6 +26,8 @@ MPU6050 mpu;
 #define INTERRUPT_PIN 2  // use pin 2 on Arduino Uno & most boards
 #define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
+
+int verboseOutputCount = 0;
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -430,6 +432,8 @@ void stabilize(){
   rotatePitch(pitchControlOutput);
 
   #ifdef VERBOSE_OUTPUT
+  if(verboseOutputCount > 1000){
+    verboseOutputCount = 0 ;
     Serial.print("Pitch: ");
     Serial.print(pitch, 4);
     Serial.print(" Roll: ");
@@ -452,6 +456,9 @@ void stabilize(){
     Serial.print(Ki, 3);
     Serial.print(" Kd: ");
     Serial.println(Kd, 3);
+  } else {
+    verboseOutputCount += +1;
+  }
   #endif
 
   #ifdef PLOT_OUTPUT
