@@ -6,6 +6,7 @@
 #include <PID_v1.h>
 #include "Motor.h"
 #include "I2Cdev.h"
+#include "LeakyIntegrator.h"
 #include "MovingAverage.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 //#include "MPU6050.h" // not necessary if using MotionApps include file
@@ -38,7 +39,7 @@ uint8_t fifoBuffer[64]; // FIFO storage buffer
 constexpr float PIDConstantStep = 0.01;
 double pitchSetpoint, pitchInput, pitchControlOutput;
 double rollSetpoint, rollInput, rollControlOutput;
-double Kp=0.430, Ki=0.020, Kd=0.030;
+double Kp=0.430, Ki=0.000, Kd=0.030;
 PID pitchPID(&pitchInput, &pitchControlOutput, &pitchSetpoint, Kp, Ki, Kd, DIRECT);
 PID rollPID(&rollInput, &rollControlOutput, &rollSetpoint, Kp, Ki, Kd, REVERSE);
 
@@ -105,7 +106,8 @@ const int MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
 const int MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
 
 MovingAverage movingAveragePitch{5};
-MovingAverage movingAverageRoll{5};
+MovingAverage movingAverageRoll{4};
+LeakyIntegrator leakyIntegratorRoll{0.75};
 
 void setup()
 {
@@ -150,7 +152,9 @@ void setup()
     mpu.setXAccelOffset(-3011);
     mpu.setYAccelOffset(-2583);
     mpu.setZAccelOffset(1061); // 1688 factory default for my test chip
-    mpu.setRate(1);
+
+    //default is 4 -> 100Hz
+    mpu.setRate(3); 
 
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {
@@ -158,6 +162,11 @@ void setup()
         Serial.println(F("Enabling DMP..."));
         mpu.setDMPEnabled(true);
 
+        Serial.print("DLPF Mode: ");
+        Serial.println(mpu.getDLPFMode());
+        Serial.print("Gyro outputrate divider: ");
+        Serial.println(mpu.getRate());
+        
         // enable Arduino interrupt detection
         Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
         attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
@@ -200,9 +209,9 @@ void setup()
 
   currentGlobalSpeed = ESCSettings.Low;
 
-  pitchPID.SetSampleTime(1);
+  pitchPID.SetSampleTime(10);
   pitchPID.SetOutputLimits(MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
-  rollPID.SetSampleTime(1);
+  rollPID.SetSampleTime(10);
   rollPID.SetOutputLimits(MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
 
   #ifdef PLOT_OUTPUT
@@ -408,9 +417,10 @@ void stabilize(){
   float deltaRoll = desiredYpr[2] - roll;
 
   movingAveragePitch.append(pitch);
+  leakyIntegratorRoll.append(roll);
   movingAverageRoll.append(roll);
 
-  rollInput = roll;
+  rollInput = leakyIntegratorRoll.value();
   pitchInput = pitch;
 
   //pitchPID.Compute();
@@ -445,17 +455,13 @@ void stabilize(){
   #endif
 
   #ifdef PLOT_OUTPUT
-    Serial.print(pitch, 4);
-    Serial.print(" ");
-    Serial.print(pitchControlOutput, 4);
-    Serial.print(" ");
-    Serial.print(movingAveragePitch.value(), 4);
-    Serial.print(" ");
     Serial.print(roll, 4);
     Serial.print(" ");
-    Serial.print(rollControlOutput, 4);
+    Serial.print(rollControlOutput);
     Serial.print(" ");
-    Serial.println(movingAverageRoll.value(), 4);
+    Serial.print(movingAverageRoll.value(), 4);
+    Serial.print(" ");
+    Serial.println(leakyIntegratorRoll.value(), 4);
   #endif
 }
 
