@@ -5,6 +5,14 @@
 class AttitudeController {
 
   public:
+    static const short DEFAULT_CONTROL_BOUND = 50;
+    static const short MIN_YAW_CONTROL = -DEFAULT_CONTROL_BOUND;
+    static const short MAX_YAW_CONTROL = DEFAULT_CONTROL_BOUND;
+    static const short MIN_PITCH_CONTROL = -DEFAULT_CONTROL_BOUND;
+    static const short MAX_PITCH_CONTROL = DEFAULT_CONTROL_BOUND;
+    static const short MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
+    static const short MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
+    
     AttitudeController(): motors{{5}, {6}, {10}, {11}}, baseThrust{0}, yawControl{0}, pitchControl{0}, rollControl{0} {
 
     }
@@ -111,29 +119,21 @@ class AttitudeController {
   private:
 
     // Motors can actually go up to ~2000. This is a safeguard.
-    static constexpr int MAX_THRUST = 1500;
-    static constexpr int MIN_THRUST = 0;
-    static constexpr int STARTUP_THRUST = 1000;
+    static constexpr short MAX_THRUST = 1500;
+    static constexpr short MIN_THRUST = 0;
+    static constexpr short STARTUP_THRUST = 1000;
 
-    static constexpr int THRUST_STEP = 10;
+    static constexpr short THRUST_STEP = 10;
 
-    static constexpr int NUM_MOTORS = 4;
+    static constexpr short NUM_MOTORS = 4;
 
-    static constexpr int FRONT_LEFT = 0;
-    static constexpr int FRONT_RIGHT = 1;
-    static constexpr int BACK_RIGHT = 2;
-    static constexpr int BACK_LEFT = 3;
+    static constexpr short FRONT_LEFT = 0;
+    static constexpr short FRONT_RIGHT = 1;
+    static constexpr short BACK_RIGHT = 2;
+    static constexpr short BACK_LEFT = 3;
 
-    const int DEFAULT_CONTROL_BOUND = 50;
-    const int MIN_YAW_CONTROL = -DEFAULT_CONTROL_BOUND;
-    const int MAX_YAW_CONTROL = DEFAULT_CONTROL_BOUND;
-    const int MIN_PITCH_CONTROL = -DEFAULT_CONTROL_BOUND;
-    const int MAX_PITCH_CONTROL = DEFAULT_CONTROL_BOUND;
-    const int MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
-    const int MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
-
-    int baseThrust;
-    int yawControl, pitchControl, rollControl;
+    short baseThrust;
+    short yawControl, pitchControl, rollControl;
 
     Motor motors[4];
 };

@@ -1,5 +1,5 @@
-//#define PLOT_OUTPUT
-#define VERBOSE_OUTPUT
+#define PLOT_OUTPUT
+//#define VERBOSE_OUTPUT
 int verboseOutputCount = 0;
 
 #include <Servo.h>

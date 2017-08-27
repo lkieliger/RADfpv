@@ -14,12 +14,12 @@ public:
     servoControl.attach(pin);
   }
 
-  void setThrust(int t)
+  void setThrust(short t)
   {
     thrust = constrain(t, MIN_THRUST, MAX_THRUST);
   }
 
-  void updateThrust(int delta)
+  void updateThrust(short delta)
   {
     thrust += delta;
     thrust = constrain(thrust, MIN_THRUST, MAX_THRUST);
@@ -40,10 +40,10 @@ public:
   
 private:
   Servo servoControl;
-  int thrust;
-  int pin;
-  const int MIN_THRUST = 0;
-  const int MAX_THRUST = 1400;
+  short thrust;
+  short pin;
+  const short MIN_THRUST = 0;
+  const short MAX_THRUST = 1400;
 };
 
 #endif

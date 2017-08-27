@@ -1,6 +1,8 @@
 #ifndef PIDCONTROLLER_H
 #define PIDCONTROLLER_H
 
+#include "AttitudeController.h"
+
 enum AxisSelector{YAW_SELECTOR, PITCH_SELECTOR, ROLL_SELECTOR, AXIS_SELECTOR_MAX = ROLL_SELECTOR};
 
 typedef struct PIDConstants{
@@ -9,16 +11,7 @@ typedef struct PIDConstants{
 
 class PIDController{
 
-  private:
-    const int DEFAULT_CONTROL_BOUND = 50;
-    const int MIN_YAW_CONTROL = -DEFAULT_CONTROL_BOUND;
-    const int MAX_YAW_CONTROL = DEFAULT_CONTROL_BOUND;
-    const int MIN_PITCH_CONTROL = -DEFAULT_CONTROL_BOUND;
-    const int MAX_PITCH_CONTROL = DEFAULT_CONTROL_BOUND;
-    const int MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
-    const int MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
-    const float PIDConstantStep = 0.01;
-    
+  private:    
     double pitchSetpoint, pitchInput, pitchControlOutput;
     double rollSetpoint, rollInput, rollControlOutput;
     PIDConstants pitchConstants, rollConstants;
@@ -46,9 +39,9 @@ class PIDController{
 
     void init(){
       pitchPID.SetSampleTime(10);
-      pitchPID.SetOutputLimits(MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
+      pitchPID.SetOutputLimits(AttitudeController::MIN_PITCH_CONTROL, AttitudeController::MAX_PITCH_CONTROL);
       rollPID.SetSampleTime(10);
-      rollPID.SetOutputLimits(MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
+      rollPID.SetOutputLimits(AttitudeController::MIN_ROLL_CONTROL, AttitudeController::MAX_ROLL_CONTROL);
 
       pitchPID.SetMode(AUTOMATIC);
       rollPID.SetMode(AUTOMATIC);
