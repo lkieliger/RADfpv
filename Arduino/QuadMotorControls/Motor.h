@@ -34,7 +34,6 @@ public:
   {
     Serial.print("MP");
     Serial.print(pin);
-    
     Serial.print(". Thrust set to ");
     Serial.println(thrust);
   }

@@ -1,5 +1,5 @@
-#define PLOT_OUTPUT
-//#define VERBOSE_OUTPUT
+//#define PLOT_OUTPUT
+#define VERBOSE_OUTPUT
 int verboseOutputCount = 0;
 
 #include <Servo.h>
@@ -7,6 +7,7 @@ int verboseOutputCount = 0;
 #include "Motor.h"
 #include "Gyroscope.h"
 #include "Filters.h"
+#include "AttitudeController.h"
 #include "PIDController.h"
 
 Gyroscope gyro;
@@ -14,48 +15,8 @@ MovingAverage movingAveragePitch{4};
 MovingAverage movingAverageRoll{4};
 LeakyIntegrator leakyIntegratorRoll{0.75};
 
+AttitudeController attitude;
 PIDController pid;
-
-typedef struct QuadControlDef
-{
-  int yaw;
-  int pitch;
-  int roll;
-} QuadControlDef;
-
-QuadControlDef quadControl;
-
-constexpr int NUMMOTORS = 4;
-Motor motors[NUMMOTORS] = {{5}, {6}, {10}, {11}};
-
-// Stores the settings for all ESC. This can be made specific to each ESC, but that's not needed
-// for a quadcopter project
-typedef struct ESCSettingsDef
-{
-  int Low;
-  int High;
-  int Startup;
-} ESCSettingsDef;
-
-ESCSettingsDef ESCSettings; 
-
-int currentGlobalSpeed;
-int yawControl;
-int pitchControl;
-int rollControl;
-
-const int ESC_HIGH_DEFAULT = 1600;
-const int ESC_LOW_DEFAULT = 0;
-const int ESC_STARTUP_DEFAULT = 1000;
-const int ESC_STEP = 10;
-
-const int DEFAULT_CONTROL_BOUND = 50;
-const int MIN_YAW_CONTROL = -DEFAULT_CONTROL_BOUND;
-const int MAX_YAW_CONTROL = DEFAULT_CONTROL_BOUND;
-const int MIN_PITCH_CONTROL = -DEFAULT_CONTROL_BOUND;
-const int MAX_PITCH_CONTROL = DEFAULT_CONTROL_BOUND;
-const int MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
-const int MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
 
 const float PIDConstantStep = 0.01;
 AxisSelector sel = PITCH_SELECTOR;
@@ -63,26 +24,9 @@ AxisSelector sel = PITCH_SELECTOR;
 void setup()
 {
   gyro.init();
+  attitude.init();
   pid.init();
-  
-  // Set the ESC settings to the defaults
-  ESCSettings.Low   = ESC_LOW_DEFAULT;
-  ESCSettings.High  = ESC_HIGH_DEFAULT;
-  ESCSettings.Startup = ESC_STARTUP_DEFAULT;
-
-  quadControl.yaw = 0;
-  quadControl.pitch = 0;
-  quadControl.roll = 0;
-
-  // Send a low signal initially for normal mode
-  for (int i = 0; i < NUMMOTORS; i++)
-  {
-    motors[i].init();
-    motors[i].writeThrust();
-  }
-
-  currentGlobalSpeed = ESCSettings.Low;
-
+  attitude.init();
 }
 
 // Increase the speed of the motor from low to high as set by the user
@@ -95,42 +39,19 @@ void Run()
     //  Thrust control
     //------------------------------
     case 'j':
-      //Serial.println("\nIncreasing motor speed by step");
-      if (currentGlobalSpeed + ESC_STEP < ESCSettings.High) {
-        currentGlobalSpeed = currentGlobalSpeed + ESC_STEP;
-        //Serial.println("New speed = ");
-        //Serial.print(currentGlobalSpeed);
-      }
-
-      else
-      {
-        //Serial.println("\nMax speed reached\n");
-      }
+      attitude.increaseBaseThrust();
       break;
     case 'k':
-      //Serial.println("\nDecreasing motor speed by step\n");
-      if (currentGlobalSpeed - ESC_STEP >= ESCSettings.Low)
-      {
-        currentGlobalSpeed = currentGlobalSpeed - ESC_STEP;
-        //Serial.println("New speed = ");
-        //Serial.print(currentGlobalSpeed);
-      }
-
-      else
-      {
-        //Serial.println("\nMin speed reached\n");
-      }
+      attitude.decreaseBaseThrust();
       break;
     case 'l':
-      //Serial.println("\nStopping motors\n");
-      currentGlobalSpeed = ESCSettings.Low;
+      attitude.shutdownMotors();
       break;
     case 'u':
-      //Serial.println("\nPlacing throttle at startup\n");
-      currentGlobalSpeed = ESCSettings.Startup;
+      attitude.startupMotors();
       break;
     case 'i':
-      resetControls();
+      attitude.resetControls();
       break;
       
     //------------------------------
@@ -167,73 +88,10 @@ void Run()
       break;
   }
   stabilize();
-  applyMotorSpeed();
-}
-
-void applyMotorSpeed(){
-  /**
-   * Yaw is the vertical axis
-   * Pitch is the lateral axis
-   * Roll is the longitudinal axis
-   */
-
-  for (int i = 0; i < NUMMOTORS; i++)
-  {
-    motors[i].setThrust(currentGlobalSpeed);
-  }
   
-  if (quadControl.yaw != 0){
-    /** 
-     * Unbalance angular momentum of the propellers, the body of the drone pivots in the opposite direction to 
-     * keep the total angular momentum unchanged. Increase thrust on the other motors to keep the total forward force
-     * unchanged.
-     */
-    motors[1].updateThrust( - quadControl.yaw);
-    motors[3].updateThrust( - quadControl.yaw);
-
-    motors[0].updateThrust( + quadControl.yaw);
-    motors[2].updateThrust( + quadControl.yaw);
-  }
-
-  if (quadControl.pitch != 0){
-    motors[0].updateThrust( + quadControl.pitch);
-    motors[1].updateThrust( + quadControl.pitch);
-
-    motors[2].updateThrust( - quadControl.pitch);
-    motors[3].updateThrust( - quadControl.pitch);
-  }
-
-  if (quadControl.roll != 0){
-    motors[0].updateThrust( + quadControl.roll);
-    motors[3].updateThrust( + quadControl.roll);
-
-    motors[1].updateThrust( - quadControl.roll);
-    motors[2].updateThrust( - quadControl.roll);
-  }
-  
-  for (int i = 0; i < NUMMOTORS; i++)
-  {
-    motors[i].writeThrust();
-  }  
+  attitude.outputThrustSignal();
 }
 
-void rotateYaw(int d){
-  quadControl.yaw = constrain(d, MIN_YAW_CONTROL, MAX_YAW_CONTROL);
-}
-
-void rotatePitch(int d){
-  quadControl.pitch = constrain(d, MIN_PITCH_CONTROL, MAX_PITCH_CONTROL);
-}
-
-void rotateRoll(int d){
-  quadControl.roll = constrain(d, MIN_ROLL_CONTROL, MAX_ROLL_CONTROL);
-}
-
-void resetControls(){
-  quadControl.yaw = 0;
-  quadControl.pitch = 0;
-  quadControl.roll = 0;
-}
 
 void stabilize(){
 
@@ -247,8 +105,8 @@ void stabilize(){
   pid.updateInputs(pitch, leakyIntegratorRoll.getCurrentValue());
   pid.compute();
 
-  rotatePitch(pid.getPitchOutput());
-  rotateRoll(pid.getRollOutput());
+  attitude.rotatePitch(pid.getPitchOutput());
+  attitude.rotateRoll(pid.getRollOutput());
 
   #ifdef VERBOSE_OUTPUT
   if(verboseOutputCount > 1000){
@@ -258,11 +116,11 @@ void stabilize(){
     Serial.print(" Roll: ");
     Serial.print(roll, 4);
     Serial.print(" YC: ");
-    Serial.print(quadControl.yaw);
+    Serial.print(attitude.getYawControl());
     Serial.print(" PC: ");
-    Serial.print(quadControl.pitch);
+    Serial.print(attitude.getPitchControl());
     Serial.print(" RC: ");
-    Serial.print(quadControl.roll);
+    Serial.print(attitude.getRollControl());
     Serial.print(" YPID: ");
     Serial.print("_");
     Serial.print(" PPID: ");
