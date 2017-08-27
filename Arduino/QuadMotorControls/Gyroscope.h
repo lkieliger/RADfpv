@@ -40,33 +40,22 @@ class Gyroscope{
     
     //TODO: simplify with variables yaw / pitch / roll
     float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
-    float originYpr[3];
 
   public:
-    Gyroscope(): yaw{0}, pitch{0}, roll{0}, mpu{}, ypr{0,0,0}, originYpr{0,0,0}{
+    Gyroscope(): yaw{0}, pitch{0}, roll{0}, mpu{}, ypr{0,0,0}{
       
     }
 
     void init(){
-        // join I2C bus (I2Cdev library doesn't do this automatically)
+      // join I2C bus (I2Cdev library doesn't do this automatically)
       #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
           Wire.begin();
-          Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+          Wire.setClock(400000); 
       #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
           Fastwire::setup(400, true);
       #endif
-  
-      // initialize serial communication
-      // (115200 chosen because it is required for Teapot Demo output, but it's
-      // really up to you depending on your project)
       Serial.begin(230400);
-      while (!Serial); // wait for Leonardo enumeration, others continue immediately
-  
-      // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
-      // Pro Mini running at 3.3v, cannot handle this baud rate reliably due to
-      // the baud timing being too misaligned with processor ticks. You must use
-      // 38400 or slower in these cases, or use some kind of external separate
-      // crystal solution for the UART timer.
+      while (!Serial);
   
       // initialize device
       Serial.println(F("Initializing I2C devices..."));
@@ -81,13 +70,12 @@ class Gyroscope{
       Serial.println(F("Initializing DMP..."));
       devStatus = mpu.dmpInitialize();
   
-      // supply your own gyro offsets here, scaled for min sensitivity
       mpu.setXGyroOffset(-107);
       mpu.setYGyroOffset(-4);
       mpu.setZGyroOffset(4);
       mpu.setXAccelOffset(-3011);
       mpu.setYAccelOffset(-2583);
-      mpu.setZAccelOffset(1061); // 1688 factory default for my test chip
+      mpu.setZAccelOffset(1061); 
   
       //default is 4 -> 100Hz
       mpu.setRate(3); 
@@ -108,7 +96,7 @@ class Gyroscope{
           attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
           mpuIntStatus = mpu.getIntStatus();
   
-          // set our DMP Ready flag so the main loop() function knows it's okay to use it
+          // set DMP Ready flag so the main loop() function knows it's okay to use it
           Serial.println(F("DMP ready! Waiting for first interrupt..."));
           dmpReady = true;
   
@@ -166,14 +154,6 @@ class Gyroscope{
           pitch = ypr[1] * TO_DEG;
           roll = ypr[2] * TO_DEG;
       }
-    }
-
-    void calibrateGyro(){
-    
-      originYpr[0] = yaw;
-      originYpr[1] = pitch;
-      originYpr[2] = roll;
-     
     }
 
     float getYaw(){

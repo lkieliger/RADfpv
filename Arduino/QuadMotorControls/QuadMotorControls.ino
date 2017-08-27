@@ -1,17 +1,16 @@
-//#define PLOT_OUTPUT
-#define VERBOSE_OUTPUT
+#define PLOT_OUTPUT
+//#define VERBOSE_OUTPUT
 int verboseOutputCount = 0;
 
 #include <Servo.h>
 #include <PID_v1.h>
 #include "Motor.h"
 #include "Gyroscope.h"
-#include "MovingAverage.h"
-#include "LeakyIntegrator.h"
+#include "Filters.h"
 #include "PIDController.h"
 
 Gyroscope gyro;
-MovingAverage movingAveragePitch{5};
+MovingAverage movingAveragePitch{4};
 MovingAverage movingAverageRoll{4};
 LeakyIntegrator leakyIntegratorRoll{0.75};
 
@@ -139,7 +138,7 @@ void Run()
     //------------------------------
     
     case 't':
-      gyro.calibrateGyro();
+      pid.updateSetpoints(gyro.getPitch(), gyro.getRoll());
       break;
 
     //------------------------------
@@ -164,7 +163,6 @@ void Run()
     case 'v':
       pid.updateKd(-PIDConstantStep);
       break;
-      
     default:
       break;
   }
@@ -242,11 +240,11 @@ void stabilize(){
   float roll = gyro.getRoll();
   float pitch = gyro.getPitch();
 
-  movingAveragePitch.append(pitch);
-  leakyIntegratorRoll.append(roll);
-  movingAverageRoll.append(roll);
+  movingAveragePitch.addSample(pitch);
+  leakyIntegratorRoll.addSample(roll);
+  movingAverageRoll.addSample(roll);
 
-  pid.updateInputs(pitch, leakyIntegratorRoll.value());
+  pid.updateInputs(pitch, leakyIntegratorRoll.getCurrentValue());
   pid.compute();
 
   rotatePitch(pid.getPitchOutput());
@@ -287,9 +285,9 @@ void stabilize(){
     Serial.print(" ");
     Serial.print(pid.getRollOutput());
     Serial.print(" ");
-    Serial.print(movingAverageRoll.value(), 4);
+    Serial.print(movingAverageRoll.getCurrentValue(), 4);
     Serial.print(" ");
-    Serial.println(leakyIntegratorRoll.value(), 4);
+    Serial.println(leakyIntegratorRoll.getCurrentValue(), 4);
   #endif
 }
 
