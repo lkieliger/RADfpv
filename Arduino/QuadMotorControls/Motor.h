@@ -5,7 +5,7 @@
 
 class Motor{
 public:
-  Motor(int outputPin) : thrust(0), pin(outputPin), servoControl{}
+  Motor(int outputPin) : servoControl{}, thrust(0), pin(outputPin)
   {
   }
 

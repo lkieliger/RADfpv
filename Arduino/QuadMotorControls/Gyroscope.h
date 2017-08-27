@@ -43,7 +43,7 @@ class Gyroscope{
     float originYpr[3];
 
   public:
-    Gyroscope(): yaw{0}, pitch{0}, roll{0}, ypr{0,0,0}, originYpr{0,0,0}{
+    Gyroscope(): yaw{0}, pitch{0}, roll{0}, mpu{}, ypr{0,0,0}, originYpr{0,0,0}{
       
     }
 
@@ -101,6 +101,7 @@ class Gyroscope{
   
           // enable Arduino interrupt detection
           Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
+          attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
           mpuIntStatus = mpu.getIntStatus();
   
           // set our DMP Ready flag so the main loop() function knows it's okay to use it
@@ -121,7 +122,7 @@ class Gyroscope{
     }
 
     boolean isReady(){
-      return !(!mpuInterrupt && fifoCount < packetSize);
+      return mpuInterrupt || fifoCount >= packetSize;
     }
     
     void actualize(){

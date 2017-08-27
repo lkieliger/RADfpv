@@ -19,12 +19,12 @@ typedef struct QuadControlDef
   int yaw;
   int pitch;
   int roll;
-};
+} QuadControlDef;
 
 QuadControlDef quadControl;
 
 constexpr int NUMMOTORS = 4;
-const Motor motors[NUMMOTORS] = {{5}, {6}, {10}, {11}};
+Motor motors[NUMMOTORS] = {{5}, {6}, {10}, {11}};
 
 // Stores the settings for all ESC. This can be made specific to each ESC, but that's not needed
 // for a quadcopter project
@@ -33,7 +33,7 @@ typedef struct ESCSettingsDef
   int Low;
   int High;
   int Startup;
-};
+} ESCSettingsDef;
 
 ESCSettingsDef ESCSettings; 
 
@@ -323,7 +323,7 @@ void loop()
     while (!gyro.isReady()) {
         Run();
     }
-    
+
     gyro.actualize();
 }
 
