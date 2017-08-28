@@ -52,6 +52,26 @@ class PIDController{
       rollPID.Compute();
     }
 
+    void disable(){
+      if (pitchPID.GetMode() == MANUAL && rollPID.GetMode() == MANUAL){
+        return;
+      } else {
+        pitchPID.SetMode(MANUAL);
+        rollPID.SetMode(MANUAL);
+
+        pitchControlOutput = rollControlOutput = 0;
+      }
+    }
+
+    void enable(){
+      if (pitchPID.GetMode() == AUTOMATIC && rollPID.GetMode() == AUTOMATIC){
+        return;
+      } else {
+        pitchPID.SetMode(AUTOMATIC);
+        rollPID.SetMode(AUTOMATIC);
+      }
+    }
+
     void swapPIDSettingAxis(){
       if(currentConstantsSetting == &pitchConstants){
         currentConstantsSetting = &rollConstants;

@@ -12,6 +12,15 @@ class AttitudeController {
     static const short MAX_PITCH_CONTROL = DEFAULT_CONTROL_BOUND;
     static const short MIN_ROLL_CONTROL = -DEFAULT_CONTROL_BOUND;
     static const short MAX_ROLL_CONTROL = DEFAULT_CONTROL_BOUND;
+
+    static constexpr short STARTUP_THRUST = 1000;
+
+    static constexpr short NUM_MOTORS = 4;
+
+    static constexpr short FRONT_LEFT = 0;
+    static constexpr short FRONT_RIGHT = 1;
+    static constexpr short BACK_RIGHT = 2;
+    static constexpr short BACK_LEFT = 3;
     
     AttitudeController(): motors{{5}, {6}, {10}, {11}}, baseThrust{0}, yawControl{0}, pitchControl{0}, rollControl{0} {
 
@@ -22,6 +31,15 @@ class AttitudeController {
       for (int i = 0; i < NUM_MOTORS; i++)
       {
         motors[i].init();
+        motors[i].writeThrust();
+      }
+    }
+
+    void emergencyBrake(){
+      baseThrust = 0;
+      for (int i = 0; i < NUM_MOTORS; i++)
+      {
+        motors[i].setThrust(BRAKE_THRUST);
         motors[i].writeThrust();
       }
     }
@@ -104,34 +122,39 @@ class AttitudeController {
       }
     }
 
-    int getYawControl() {
+    short getYawControl() {
       return yawControl;
     }
 
-    int getPitchControl() {
+    short getPitchControl() {
       return pitchControl;
     }
 
-    int getRollControl() {
+    short getRollControl() {
       return rollControl;
+    }
+
+    short getBaseThrust(){
+      return baseThrust;
+    }
+
+    short getMotorThrust(short i){
+      if (i > 3 || i < 0){
+        return -1;
+      }
+      
+      return motors[i].getThrust();
     }
 
   private:
 
     // Motors can actually go up to ~2000. This is a safeguard.
-    static constexpr short MAX_THRUST = 1500;
+    static constexpr short MAX_THRUST = 1400;
     static constexpr short MIN_THRUST = 0;
-    static constexpr short STARTUP_THRUST = 1000;
-
+    static constexpr short BRAKE_THRUST = STARTUP_THRUST;
+   
     static constexpr short THRUST_STEP = 10;
-
-    static constexpr short NUM_MOTORS = 4;
-
-    static constexpr short FRONT_LEFT = 0;
-    static constexpr short FRONT_RIGHT = 1;
-    static constexpr short BACK_RIGHT = 2;
-    static constexpr short BACK_LEFT = 3;
-
+    
     short baseThrust;
     short yawControl, pitchControl, rollControl;
 

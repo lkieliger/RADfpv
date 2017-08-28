@@ -1,5 +1,5 @@
-#define PLOT_OUTPUT
-//#define VERBOSE_OUTPUT
+//#define PLOT_OUTPUT
+#define VERBOSE_OUTPUT
 int verboseOutputCount = 0;
 
 #include <Servo.h>
@@ -29,7 +29,16 @@ void setup()
   attitude.init();
 }
 
-// Increase the speed of the motor from low to high as set by the user
+void loop()
+{
+    // wait for MPU interrupt or extra packet(s) available
+    while (!gyro.isReady()) {
+        Run();
+    }
+
+    gyro.actualize();
+}
+
 void Run()
 {
   char currentChar = Serial.read();
@@ -88,7 +97,7 @@ void Run()
       break;
   }
   stabilize();
-  
+  printStatus();
   attitude.outputThrustSignal();
 }
 
@@ -97,6 +106,18 @@ void stabilize(){
 
   float roll = gyro.getRoll();
   float pitch = gyro.getPitch();
+
+  // ----------- SAFEGUARD ----------- //
+  if( abs(roll) > 50.0 || abs(pitch) > 50.0){
+    attitude.emergencyBrake();
+    pid.disable();
+  }
+
+  if( attitude.getBaseThrust() <= AttitudeController::STARTUP_THRUST){
+    pid.disable();
+  } else {
+    pid.enable();
+  }
 
   movingAveragePitch.addSample(pitch);
   leakyIntegratorRoll.addSample(roll);
@@ -107,14 +128,27 @@ void stabilize(){
 
   attitude.rotatePitch(pid.getPitchOutput());
   attitude.rotateRoll(pid.getRollOutput());
+}
 
+void printStatus(){
   #ifdef VERBOSE_OUTPUT
   if(verboseOutputCount > 1000){
     verboseOutputCount = 0 ;
+    Serial.print("Base thrust: ");
+    Serial.print(attitude.getBaseThrust());
+    Serial.print(" Front left: ");
+    Serial.print(attitude.getMotorThrust(AttitudeController::FRONT_LEFT));
+    Serial.print(" Front right: ");
+    Serial.print(attitude.getMotorThrust(AttitudeController::FRONT_RIGHT));
+    Serial.print(" Back right: ");
+    Serial.print(attitude.getMotorThrust(AttitudeController::BACK_RIGHT));
+    Serial.print(" Back left: ");
+    Serial.println(attitude.getMotorThrust(AttitudeController::BACK_LEFT));
+    
     Serial.print("Pitch: ");
-    Serial.print(pitch, 4);
+    Serial.print(gyro.getPitch(), 4);
     Serial.print(" Roll: ");
-    Serial.print(roll, 4);
+    Serial.print(gyro.getRoll(), 4);
     Serial.print(" YC: ");
     Serial.print(attitude.getYawControl());
     Serial.print(" PC: ");
@@ -133,9 +167,9 @@ void stabilize(){
     Serial.print(pid.getKi(), 3);
     Serial.print(" Kd: ");
     Serial.println(pid.getKd(), 3);
-  } else {
-    verboseOutputCount += +1;
-  }
+  } 
+  verboseOutputCount += +1;
+  
   #endif
 
   #ifdef PLOT_OUTPUT
@@ -147,16 +181,6 @@ void stabilize(){
     Serial.print(" ");
     Serial.println(leakyIntegratorRoll.getCurrentValue(), 4);
   #endif
-}
-
-void loop()
-{
-    // wait for MPU interrupt or extra packet(s) available
-    while (!gyro.isReady()) {
-        Run();
-    }
-
-    gyro.actualize();
 }
 
 

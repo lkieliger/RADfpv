@@ -30,6 +30,10 @@ public:
     servoControl.writeMicroseconds(thrust);
   }
 
+  short getThrust(){
+    return thrust;
+  }
+
   void printStatus()
   {
     Serial.print("MP");
