@@ -14,12 +14,12 @@ Gyroscope gyro;
 MovingAverage movingAveragePitch{4};
 MovingAverage movingAverageRoll{4};
 LeakyIntegrator leakyIntegratorRoll{0.75};
+LeakyIntegrator leakyIntegratorPitch{0.75};
 
 AttitudeController attitude;
 PIDController pid;
 
 const float PIDConstantStep = 0.01;
-AxisSelector sel = PITCH_SELECTOR;
 
 void setup()
 {
@@ -122,11 +122,10 @@ void stabilize(){
     pid.enable();
   }
 
-  movingAveragePitch.addSample(pitch);
+  leakyIntegratorPitch.addSample(pitch);
   leakyIntegratorRoll.addSample(roll);
-  movingAverageRoll.addSample(roll);
 
-  pid.updateInputs(pitch, leakyIntegratorRoll.getCurrentValue());
+  pid.updateInputs(leakyIntegratorPitch.getCurrentValue(), leakyIntegratorRoll.getCurrentValue());
   pid.compute();
 
   attitude.rotatePitch(pid.getPitchOutput());
@@ -176,11 +175,15 @@ void printStatus(){
   #endif
 
   #ifdef PLOT_OUTPUT
-    Serial.print(roll, 4);
+    Serial.print(gyro.getPitch(), 4);
+    Serial.print(" ");
+    Serial.print(pid.getPitchOutput());
+    Serial.print(" ");
+    Serial.print(leakyIntegratorPitch.getCurrentValue(), 4);
+    Serial.print(" ");
+    Serial.print(gyro.getRoll(), 4);
     Serial.print(" ");
     Serial.print(pid.getRollOutput());
-    Serial.print(" ");
-    Serial.print(movingAverageRoll.getCurrentValue(), 4);
     Serial.print(" ");
     Serial.println(leakyIntegratorRoll.getCurrentValue(), 4);
   #endif
