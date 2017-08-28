@@ -75,6 +75,9 @@ void Run()
     //  PID constant control
     //------------------------------
 
+    case 's':
+      pid.swapPIDSettingAxis();
+      break;
     case 'e':
       pid.updateKp(PIDConstantStep);
       break;
