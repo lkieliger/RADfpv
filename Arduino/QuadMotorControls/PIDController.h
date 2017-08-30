@@ -5,10 +5,20 @@
 
 enum AxisSelector{YAW_SELECTOR, PITCH_SELECTOR, ROLL_SELECTOR, AXIS_SELECTOR_MAX = ROLL_SELECTOR};
 
+/**
+ * Holds the tuning constant of the PID controller. 
+ * Kp is the proportional gain
+ * Ki is the integral gain
+ * Kd is the derivative gain
+ */
 typedef struct PIDConstants{
   float Kp, Ki, Kd;
 } PIDConstants;
 
+/**
+ * This class encapsulates all the PID controllers necessary to stabilize the quadcopter. More specifically,
+ * there is one controller per axis (yaw / pitch / roll).
+ */
 class PIDController{
 
   private:    
@@ -34,10 +44,20 @@ class PIDController{
       pitchSetpoint{0}, rollSetpoint{0},
       pitchInput{0}, rollInput{0},
       pitchPID{&pitchInput, &pitchControlOutput, &pitchSetpoint, pitchConstants.Kp, pitchConstants.Ki, pitchConstants.Kd, DIRECT},
-      rollPID{&rollInput, &rollControlOutput, &rollSetpoint, rollConstants.Kp, rollConstants.Ki, rollConstants.Kd, REVERSE}{
+      rollPID{&rollInput, &rollControlOutput, &rollSetpoint, rollConstants.Kp, rollConstants.Ki, rollConstants.Kd, DIRECT}{
     }
 
     void init(){
+      /**
+       * If the sampling interval is too high, the quadcopter will be unresponsive and this will lead to an unstable system.
+       * If the sampling interval is too low, it will read twice the same output from the gyroscope and the derivative
+       * part of the controller will jump up and down, again making it unstable.
+       * 
+       * The PID controller should be set to 100Hz.
+       * 
+       * Setting the PID mode on automatic turns the controller ON. On the contrary, setting it on MANUAL allows for manually
+       * modifying the output variable.
+       */
       pitchPID.SetSampleTime(10);
       pitchPID.SetOutputLimits(AttitudeController::MIN_PITCH_CONTROL, AttitudeController::MAX_PITCH_CONTROL);
       rollPID.SetSampleTime(10);
@@ -52,6 +72,10 @@ class PIDController{
       rollPID.Compute();
     }
 
+    /**
+     * This function should be called whenever the quadcopter is not in a situation where it can 
+     * stabilize itself. For example, if the motors are not spinning or during an emergency break
+     */
     void disable(){
       if (pitchPID.GetMode() == MANUAL && rollPID.GetMode() == MANUAL){
         return;
@@ -72,6 +96,11 @@ class PIDController{
       }
     }
 
+    /**
+     * Because there is a PID controller for each axis, and each of them has 3 gain constants,
+     * a pointer to a PIDConstants struct is kept. This function allows to swap between the 
+     * structs
+     */
     void swapPIDSettingAxis(){
       if(currentConstantsSetting == &pitchConstants){
         currentConstantsSetting = &rollConstants;
@@ -79,6 +108,7 @@ class PIDController{
         currentConstantsSetting = &pitchConstants;
       }
     }
+
     
     void updateSetpoints(float pS, float rS){
       this->pitchSetpoint = pS;
@@ -90,16 +120,25 @@ class PIDController{
       this->rollInput = rI;
     }
 
+    /**
+     * Updates the proportional gain of the currently pointed PIDConstant
+     */
     void updateKp(float delta){
       currentConstantsSetting->Kp += delta;
       refreshTunings();
     }
 
+    /**
+     * Updates the integral gain of the currently pointed PIDConstant
+     */
     void updateKi(float delta){
       currentConstantsSetting->Ki += delta;
       refreshTunings();
     }
 
+    /**
+     * Update the derivative gain of the currently pointed PIDConstant
+     */
     void updateKd(float delta){
       currentConstantsSetting->Kd += delta;
       refreshTunings();

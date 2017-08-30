@@ -7,6 +7,9 @@ class DSPFilter{
     virtual float getCurrentValue() = 0;
 };
 
+/**
+ * Implements the LeakyIntegrator low-pass filter
+ */
 class LeakyIntegrator : public DSPFilter{
 
     private:
@@ -28,6 +31,9 @@ class LeakyIntegrator : public DSPFilter{
       }
 };
 
+/**
+ * Implements the moving average low-pass filter
+ */
 class MovingAverage : public DSPFilter{
   private:
    int n;

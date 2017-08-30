@@ -25,6 +25,11 @@ public:
     thrust = constrain(thrust, MIN_THRUST, MAX_THRUST);
   }
 
+  /**
+   * This function actually applies the thrust to the physical motors.
+   * The reasing it is separed to update thrust is because there can be multiple updates
+   * to the thrust value in order to reach the desired thrust for stabilization.
+   */
   void writeThrust()
   {
     servoControl.writeMicroseconds(thrust);

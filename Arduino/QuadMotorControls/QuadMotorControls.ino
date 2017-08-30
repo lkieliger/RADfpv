@@ -11,8 +11,6 @@ int verboseOutputCount = 0;
 #include "PIDController.h"
 
 Gyroscope gyro;
-MovingAverage movingAveragePitch{4};
-MovingAverage movingAverageRoll{4};
 LeakyIntegrator leakyIntegratorRoll{0.75};
 LeakyIntegrator leakyIntegratorPitch{0.75};
 

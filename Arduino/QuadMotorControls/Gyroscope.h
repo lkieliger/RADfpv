@@ -1,4 +1,4 @@
-#ifndef GYROSCOPE_H
+a#ifndef GYROSCOPE_H
 #define GYROSCOPE_H
 
 #include "I2Cdev.h"
@@ -16,6 +16,9 @@ void dmpDataReady() {
    mpuInterrupt = true;
 }
 
+/**
+ * This class encapsulates all the operations necessary to retrieve data from the MPU6050 chip.
+ */
 class Gyroscope{
   private:
     float yaw, pitch, roll;
@@ -71,7 +74,12 @@ class Gyroscope{
       mpu.setYAccelOffset(-2583);
       mpu.setZAccelOffset(1061); 
   
-      //default is 4 -> 100Hz
+      /** 
+       *  setRate changes the rate divider. According to the library documentation the base rate is 1Khz.
+       *  The actual Digital Motion Processor rate is given by the formula: 1KHz / (1 + divider)
+       *  
+       *  The library default is 4 -> 200Hz
+       */
       mpu.setRate(3); 
   
       // make sure it worked (returns 0 if so)
@@ -107,10 +115,16 @@ class Gyroscope{
       }
     }
 
+    /**
+     * Returns true id there is some data to be read in the FIFO buffer
+     */
     boolean isReady(){
       return mpuInterrupt || fifoCount >= packetSize;
     }
-    
+
+    /**
+     * Reads data from the FIFO buffer and store it into the member variables
+     */
     void actualize(){
       // if programming failed, don't try to do anything
       if (!dmpReady) return;

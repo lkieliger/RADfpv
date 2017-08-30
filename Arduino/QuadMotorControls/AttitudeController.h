@@ -1,7 +1,10 @@
 #ifndef ATTITUDE_CONTROLLER_H
 #define ATTITUDE_CONTROLLER_H
 
-
+/**
+ * This class takes the navigation commands on all three axis (yaw / pitch / roll) and translate them
+ * into motor thrust so that the quadcopter can reach the desired attitude.
+ */
 class AttitudeController {
 
   public:
@@ -26,8 +29,11 @@ class AttitudeController {
 
     }
 
+    /**
+     * A low signal should initially be sent to the ESC to arm them. If the ESC read a high signal, they will enter
+     * calibration mode.
+     */
     void init() {
-      // Send a low signal initially for normal mode
       for (int i = 0; i < NUM_MOTORS; i++)
       {
         motors[i].init();
@@ -35,6 +41,11 @@ class AttitudeController {
       }
     }
 
+    /**
+     * Instantly stops the motors. 0 is not a valid value to stop the motors because they will continue spinning
+     * due to their inertia. This function actively blocks the motors to avoid physical damage to the quadcopter
+     * or the person manoeuvering it.
+     */
     void emergencyBrake(){
       baseThrust = 0;
       for (int i = 0; i < NUM_MOTORS; i++)
@@ -44,6 +55,10 @@ class AttitudeController {
       }
     }
 
+    /**
+     * The base thrust is the amount of thust that each motor initially has. To change the quadcopter's attitude,
+     * the thrust of each motor is then adjusted with respect to the base thrust.
+     */
     void increaseBaseThrust() {
       baseThrust = constrain(baseThrust + THRUST_STEP, MIN_THRUST, MAX_THRUST);
     }
